@@ -11,6 +11,7 @@ export interface Api {
   dropQueryFromCollection: (
     collectionQuery: QueryCollection
   ) => Promise<AxiosResponse>;
+  dropQueryCollection: () => Promise<AxiosResponse>;
   addCollectionToAllowList: () => Promise<AxiosResponse>;
   dropCollectionFromAllowList: () => Promise<AxiosResponse>;
   exportMetadata: () => Promise<AxiosResponse>;
@@ -58,23 +59,42 @@ export function init(hasuraUri: string, adminSecret: string): Api {
         config
       );
     },
-    addCollectionToAllowList(): Promise<AxiosResponse> {
-      return axios.post(uri, {
-        type: 'add_collection_to_allowlist',
-        args: {
-          collection: collectionName,
+    dropQueryCollection(): Promise<AxiosResponse> {
+      return axios.post(
+        uri,
+        {
+          type: 'drop_query_collection',
+          args: {
+            collection: 'allowed-queries',
+            cascade: true,
+          },
         },
-        config,
-      });
+        config
+      );
+    },
+    addCollectionToAllowList(): Promise<AxiosResponse> {
+      return axios.post(
+        uri,
+        {
+          type: 'add_collection_to_allowlist',
+          args: {
+            collection: collectionName,
+          },
+        },
+        config
+      );
     },
     dropCollectionFromAllowList(): Promise<AxiosResponse> {
-      return axios.post(uri, {
-        type: 'drop_collection_to_allowlist',
-        args: {
-          collection: collectionName,
+      return axios.post(
+        uri,
+        {
+          type: 'drop_collection_from_allowlist',
+          args: {
+            collection: collectionName,
+          },
         },
-        config,
-      });
+        config
+      );
     },
     exportMetadata(): Promise<AxiosResponse> {
       return axios.post(

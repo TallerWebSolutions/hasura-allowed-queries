@@ -1,24 +1,76 @@
-import { Source } from '@graphql-toolkit/common';
-import { TypeDefinitionNode } from 'graphql';
+import { Source } from '@graphql-tools/utils';
+import { DefinitionNode, FragmentDefinitionNode, OperationDefinitionNode, visit, print } from 'graphql';
 
 export interface QueryCollection {
   name: string;
   query: string;
 }
 
-function fromToolkitSource(source: Source): QueryCollection {
-  const names = source.document.definitions.reduce(
-    (prev, curr: TypeDefinitionNode) => prev.concat(curr.name.value),
-    [] as string[]
-  );
-  return {
-    name: names.join(' '),
-    query: source.rawSDL,
-  };
+
+function addFragmentsToQuery(defNode: OperationDefinitionNode, fragments: Record<string, FragmentDefinitionNode>) {
+  let query : string = print(defNode)
+
+  function recursivelyFindFragments(defNode: OperationDefinitionNode| FragmentDefinitionNode) {
+    visit(defNode, {
+      FragmentSpread(node) {
+        const fragDef = fragments[node.name.value]
+        // everytime we find a fragment, we add it to the query collection, and check the fragment for fragment
+        query += `\n\n${print(fragDef)}`
+        recursivelyFindFragments(fragDef);
+      },
+    })
+  }
+  recursivelyFindFragments(defNode)
+
+  return query
 }
 
-export function createQueryCollection(sources: Source[]): QueryCollection[] {
-  return sources.map(source => fromToolkitSource(source));
+export function sourceToQueryCollection(prevQueryCollections: QueryCollection[], source: Source) {
+    // Gather any fragment if any
+    const fragmentMap = source.document.definitions.reduce<Record<string, FragmentDefinitionNode>>(
+      (acc, nodeDef: DefinitionNode) => {
+        if (nodeDef.kind == 'FragmentDefinition') {
+          acc[nodeDef.name.value] = nodeDef
+          return acc
+        } else {
+          return acc
+        }
+      },
+      {}
+    )
+
+    return source.document.definitions.reduce<QueryCollection[]>(
+      (acc, defNode: DefinitionNode) => {
+        if (defNode.kind == 'OperationDefinition') {
+          // Check if name already exist. If so raise an error
+          const name = defNode.name.value
+          const query = print(defNode)
+          const exists = acc.find(qc => qc.name == name)
+          if (exists) {
+            if (exists.query != query) {
+              throw Error(`Operation ${name} already exist. Please rename the operation name.`)
+            } else {
+              return acc
+            }
+          }
+
+          return acc.concat({
+            name: defNode.name.value,
+            query: addFragmentsToQuery(defNode, fragmentMap),
+          });
+        } else {
+          return acc
+        }
+      },
+      prevQueryCollections
+    );
+  }
+
+
+export function createQueryCollections(sources: Source[]): QueryCollection[] {
+  return sources.reduce<QueryCollection[]>((acc, source) => {
+    return sourceToQueryCollection(acc, source)
+  }, []);
 }
 
 export function toMap(
@@ -30,15 +82,102 @@ export function toMap(
   }, new Map());
 }
 
-export function getChangedQueries(
+const nameToVersionRe = /(.*)___\(([0-9]+)-(.+)\)$/;
+
+type QueryCollectionWithVersion = {
+  name: string,
+  query: string
+  date: Date | null,
+  version: string | null,
+}
+
+function queryToVersionData(query: QueryCollection) : QueryCollectionWithVersion {
+  const m = query.name.match(nameToVersionRe)
+
+  return {
+    query: query.query,
+    name: m ? m[1] : query.name,
+    date: m ? new Date(parseInt(m[2])) : null,
+    version: m ? m[3] :null,
+  }
+}
+
+export function addVersionToQueryName(name: string, version: string) {
+  return `${name}___(${Date.now()}-${version})`
+}
+
+export function getAddedOrUpdatedQueriesVersion(
   oldQueries: QueryCollection[],
-  newQueries: QueryCollection[]
+  newQueries: QueryCollection[],
+  version: string,
+) : { added: QueryCollection[], updated: QueryCollection[]} {
+
+  const lastOldQueryPerVersion = oldQueries.reduce<Record<string, QueryCollectionWithVersion>>((acc, query) => {
+    const queryVersion = queryToVersionData(query)
+    const prevQueryVersion = acc[queryVersion.name]
+
+    if (!prevQueryVersion || prevQueryVersion.date < queryVersion.date) {
+      acc[queryVersion.name] = queryVersion
+    }
+
+    return acc
+  }, {})
+
+
+  // Build a list of name + version to check duplicated version existants
+  const queryNameVersionList = oldQueries.reduce<string[]>(( acc, query ) => {
+    const queryVersion = queryToVersionData(query)
+    if (queryVersion.version) {
+      acc.push(queryVersion.name + queryVersion.version)
+    }
+    return acc
+  }, [])
+
+  return newQueries.reduce<{
+    added: QueryCollection[];
+    updated: QueryCollection[];
+  }> (
+    (acc, query) => {
+      const oldQuery = lastOldQueryPerVersion[query.name]
+
+      if (queryNameVersionList.includes(query.name + version) && oldQuery?.query != query.query) {
+        throw Error(`Query with name '${query.name}' and version '${version}' already exists with different content. Update version number.`)
+      }
+
+      query.name = addVersionToQueryName(query.name, version)
+
+      return {
+        added: !!oldQuery ? acc['added'] : acc['added'].concat(query),
+        updated: !!oldQuery && oldQuery.query !== query.query ? acc['updated'].concat(query) : acc['updated']
+      };
+    },
+    { added: [], updated: [] }
+  )
+}
+
+export function getAddedOrUpdatedQueries(
+  oldQueries: QueryCollection[],
+  newQueries: QueryCollection[],
+  version: string
 ) {
+  if (version) {
+    return getAddedOrUpdatedQueriesVersion(oldQueries, newQueries, version)
+  }
+
   const oldMap = toMap(oldQueries);
 
-  return newQueries.filter(({ query, name }) => {
-    const oldQuery = oldMap.get(name);
+  return newQueries.reduce<{
+    added: QueryCollection[];
+    updated: QueryCollection[];
+  }> (
+    (acc, query) => {
+      const oldQuery = oldMap.get(query.name);
 
-    return oldQuery !== query;
-  });
+      return {
+        added: !!oldQuery ? acc['added'] : acc['added'].concat(query),
+        updated: !!oldQuery && oldQuery !== query.query ? acc['updated'].concat(query) : acc['updated']
+      };
+    },
+    { added: [], updated: [] }
+  );
 }

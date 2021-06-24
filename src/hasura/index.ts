@@ -1,10 +1,10 @@
 export {
-  createQueryCollection,
+  createQueryCollections,
   QueryCollection,
-  getChangedQueries,
+  getAddedOrUpdatedQueries,
   toMap,
+  addVersionToQueryName,
 } from './QueryCollection';
-export { createOperationDefinitionNodes } from './OperationDefinitionNode';
-export { getAllowedQueryCollection, Metadata } from './Metadata';
+export { getOperationDefinitionNodes } from './OperationDefinitionNode';
 export { init } from './Api';
 export { hasuraService } from './Service';

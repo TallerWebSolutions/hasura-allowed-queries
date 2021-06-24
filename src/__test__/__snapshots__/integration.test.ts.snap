@@ -1,12 +1,10 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`e2e Hasura unavailable throws if the endpoint cannot be reached 1`] = `[Error: Network Error]`;
-
 exports[`e2e clean state finds GraphQL operations as SDL within .graphql files, and adds them to the Hasura allow list 1`] = `
 "{
-    \\"addedCount\\": 2,
+    \\"addedCount\\": 3,
     \\"existingCount\\": 0,
-    \\"changed\\": 0,
+    \\"updated\\": 0,
     \\"collectionCreated\\": true,
     \\"operationDefinitionsFound\\": [
         {
@@ -219,18 +217,16 @@ exports[`e2e clean state finds GraphQL operations as SDL within .graphql files, 
                 \\"end\\": 42
             }
         }
-    ],
-    \\"changedQueries\\": []
+    ]
 }"
 `;
 
 exports[`e2e clean state optionally includes the introspection query 1`] = `
 "{
-    \\"addedCount\\": 3,
+    \\"addedCount\\": 4,
     \\"existingCount\\": 0,
-    \\"changed\\": 0,
+    \\"updated\\": 0,
     \\"collectionCreated\\": true,
-    \\"introspectionAllowed\\": true,
     \\"operationDefinitionsFound\\": [
         {
             \\"kind\\": \\"OperationDefinition\\",
@@ -442,18 +438,16 @@ exports[`e2e clean state optionally includes the introspection query 1`] = `
                 \\"end\\": 42
             }
         }
-    ],
-    \\"changedQueries\\": []
+    ]
 }"
 `;
 
 exports[`e2e previous state allows new queries to be added from different source pointers 1`] = `
 "{
     \\"addedCount\\": 2,
-    \\"existingCount\\": 0,
-    \\"changed\\": 0,
+    \\"existingCount\\": 3,
+    \\"updated\\": 0,
     \\"collectionCreated\\": false,
-    \\"introspectionAllowed\\": true,
     \\"operationDefinitionsFound\\": [
         {
             \\"kind\\": \\"OperationDefinition\\",
@@ -525,16 +519,15 @@ exports[`e2e previous state allows new queries to be added from different source
                 \\"end\\": 41
             }
         }
-    ],
-    \\"changedQueries\\": []
+    ]
 }"
 `;
 
 exports[`e2e previous state finds GraphQL operations as SDL within .graphql files, and adds new items to the Hasura allow list 1`] = `
 "{
     \\"addedCount\\": 0,
-    \\"existingCount\\": 2,
-    \\"changed\\": 0,
+    \\"existingCount\\": 3,
+    \\"updated\\": 0,
     \\"collectionCreated\\": false,
     \\"operationDefinitionsFound\\": [
         {
@@ -747,7 +740,6 @@ exports[`e2e previous state finds GraphQL operations as SDL within .graphql file
                 \\"end\\": 42
             }
         }
-    ],
-    \\"changedQueries\\": []
+    ]
 }"
 `;

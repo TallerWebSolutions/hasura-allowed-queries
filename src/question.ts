@@ -1,17 +1,21 @@
-import { createInterface } from 'readline';
+import { createInterface, Interface } from 'readline';
 
-const readline = createInterface({
-  input: process.stdin,
-  output: process.stdout,
-});
-
-readline.on('close', function () {
-  console.log('\nClosing...');
-  process.exit(0);
-});
+let readline: Interface | null = null
 
 export function question(message: string) {
-  return new Promise(resolve => {
+  if (readline == null) {
+      readline = createInterface({
+        input: process.stdin,
+        output: process.stdout,
+      });
+
+      readline.on('close', function () {
+        console.log('\nClosing...');
+        process.exit(0);
+      })
+  }
+
+  return new Promise<string>(resolve => {
     readline.question(message, answer => {
       resolve(answer);
       readline.resume();
